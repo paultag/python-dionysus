@@ -1,10 +1,13 @@
 import contextlib
 import requests
 
+import concurrent.futures
+
 import tempfile
 import gzip
 import shutil
 import json
+import sys
 import io
 import os
 
@@ -34,27 +37,48 @@ class Archive:
 
     def map(self, dist, component, function):
         for source in self.get_sources(dist, component):
-            directory = source.source['Directory']
-            package = source.source['Package']
-            version = source.source['Version']
+            map_wrapper(self, source, dist, component, function)
 
-            resultfp = "{}/{}-{}.json".format(directory, package, version)
-            if os.path.exists(resultfp):
-                continue
+    def amap(self, workers, dist, component, function):
+        with concurrent.futures.ProcessPoolExecutor(
+            max_workers=workers
+        ) as executor:
+            for source in self.get_sources(dist, component):
+                executor.submit(
+                    map_wrapper,
+                    self,
+                    source,
+                    dist,
+                    component,
+                    function
+                )
+            for future in concurrent.futures.as_completed():
+                sys.stdout.write(".")
+                sys.stdout.flush()
 
-            with source.checkout() as target:
-                info = function(self, source, target)
 
-            if info:
-                if not os.path.exists(directory):
-                    os.makedirs(directory)
-                with open("{}/{}-{}.json".format(
-                    directory,
-                    package,
-                    version,
-                ), 'w') as fd:
-                    json.dump(info, fd)
 
+def map_wrapper(archive, source, dist, component, function):
+    directory = source.source['Directory']
+    package = source.source['Package']
+    version = source.source['Version']
+
+    resultfp = "{}/{}-{}.json".format(directory, package, version)
+    if os.path.exists(resultfp):
+        return None
+
+    with source.checkout() as target:
+        info = function(archive, source, target)
+
+    if info:
+        if not os.path.exists(directory):
+            os.makedirs(directory)
+        with open("{}/{}-{}.json".format(
+            directory,
+            package,
+            version,
+        ), 'w') as fd:
+            json.dump(info, fd)
 
 
 class Upload:
