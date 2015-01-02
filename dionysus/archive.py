@@ -4,6 +4,7 @@ import requests
 import tempfile
 import gzip
 import shutil
+import json
 import io
 import os
 
@@ -34,7 +35,23 @@ class Archive:
     def map(self, dist, component, function):
         for source in self.get_sources(dist, component):
             with source.checkout() as target:
-                function(self, source, target)
+                info = function(self, source, target)
+
+            if info:
+                directory = source['Directory']
+                os.makedirs(directory)
+
+                source = source['Source']
+                version = source['Version']
+
+                with open("{}/{}-{}.json".format(
+                    directory,
+                    source,
+                    version,
+                ), 'wb') as fd:
+                    json.dump(fd, info)
+
+
 
 class Upload:
     def __init__(self, source, archive):
