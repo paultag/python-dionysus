@@ -1,5 +1,4 @@
 from .archive import Archive
-from .harness import amap
 
 
 def main():
@@ -9,4 +8,4 @@ def main():
         with source.unpack():
             print(source, dsc)
 
-    amap(archive, "unstable", "main", patch)
+    archive.map("unstable", "main", patch)

@@ -31,6 +31,10 @@ class Archive:
         stream = gzip.GzipFile(fileobj=data)
         yield from (Upload(x, self) for x in Sources.iter_paragraphs(stream))
 
+    def map(self, dist, component, function):
+        for source in self.get_sources(dist, component):
+            with source.checkout() as target:
+                function(self, source, target)
 
 class Upload:
     def __init__(self, source, archive):
