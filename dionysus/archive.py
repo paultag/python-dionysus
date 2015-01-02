@@ -37,7 +37,7 @@ class Upload:
         self.source = source
         self.archive = archive
 
-    def dget(self):
+    def get_dsc(self):
         target = None
         for file_ in [x['name'] for x in self.source['Files']]:
             if file_.endswith(".dsc"):
@@ -45,6 +45,10 @@ class Upload:
                 break
         else:
             raise ValueError("No DSC?")
+        return target
+
+    def dget(self):
+        target = self.get_dsc()
         directory = self.source['Directory']
         url = "{mirror}/{directory}/{target}".format(
             mirror=self.archive.mirror,
@@ -52,12 +56,24 @@ class Upload:
             target=target,
         )
         _, _, ret = run_command([
-            "dget", "-x", url,
+            "dget", "-ux", url,
         ])
 
         if ret != 0:
             raise ValueError("Bad dput - %s" % (url))
         return target
+
+    @contextlib.contextmanager
+    def unpack(self):
+        target = self.get_dsc()
+        _, _, ret = run_command([
+            "dpkg-source", "-x", target, "target",
+        ])
+        os.chdir("target")
+        try:
+            yield
+        finally:
+            os.chdir("..")
 
     @contextlib.contextmanager
     def checkout(self):
@@ -66,7 +82,7 @@ class Upload:
             popdir = os.getcwd()
             os.chdir(workdir)
             path = self.dget()
-            yield Dsc(open(path, 'r'))
+            yield Dsc(open(os.path.join(os.getcwd(), path), 'r'))
         finally:
             os.chdir(popdir)
             shutil.rmtree(workdir)
