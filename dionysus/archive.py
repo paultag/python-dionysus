@@ -52,7 +52,7 @@ class Archive:
                     directory,
                     package,
                     version,
-                ), 'wb') as fd:
+                ), 'w') as fd:
                     json.dump(info, fd)
 
 
