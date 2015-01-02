@@ -8,7 +8,7 @@ import io
 import os
 
 from .util import ipara, run_command
-from debian.deb822 import Sources
+from debian.deb822 import Sources, Dsc
 
 
 class Archive:
@@ -66,7 +66,7 @@ class Upload:
             popdir = os.getcwd()
             os.chdir(workdir)
             path = self.dget()
-            yield path
+            yield Dsc(open(path, 'r'))
         finally:
             os.chdir(popdir)
             shutil.rmtree(workdir)
