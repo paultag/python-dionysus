@@ -34,22 +34,26 @@ class Archive:
 
     def map(self, dist, component, function):
         for source in self.get_sources(dist, component):
+            directory = source.source['Directory']
+            package = source.source['Package']
+            version = source.source['Version']
+
+            resultfp = "{}/{}-{}.json".format(directory, package, version)
+            if os.path.exists(resultfp):
+                continue
+
             with source.checkout() as target:
                 info = function(self, source, target)
 
             if info:
-                directory = source['Directory']
-                os.makedirs(directory)
-
-                source = source['Source']
-                version = source['Version']
-
+                if not os.path.exists(directory):
+                    os.makedirs(directory)
                 with open("{}/{}-{}.json".format(
                     directory,
-                    source,
+                    package,
                     version,
                 ), 'wb') as fd:
-                    json.dump(fd, info)
+                    json.dump(info, fd)
 
 
 
