@@ -61,11 +61,11 @@ class Upload:
 
     @contextlib.contextmanager
     def checkout(self):
-        workdir = tempfile.mkdtemp(suffix='dionysus')
-        popdir = os.getcwd()
-        os.chdir(workdir)
-        path = self.dget()
+        workdir = tempfile.mkdtemp(suffix='.dionysus')
         try:
+            popdir = os.getcwd()
+            os.chdir(workdir)
+            path = self.dget()
             yield path
         finally:
             os.chdir(popdir)
