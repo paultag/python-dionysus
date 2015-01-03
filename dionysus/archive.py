@@ -43,16 +43,11 @@ class Archive:
         with concurrent.futures.ProcessPoolExecutor(
             max_workers=workers
         ) as executor:
-            for source in self.get_sources(dist, component):
+            for future in concurrent.futures.as_completed((
                 executor.submit(
-                    map_wrapper,
-                    self,
-                    source,
-                    dist,
-                    component,
-                    function
-                )
-            for future in concurrent.futures.as_completed():
+                    map_wrapper, self, source, dist, component, function
+                ) for source in self.get_sources(dist, component)
+            )):
                 sys.stdout.write(".")
                 sys.stdout.flush()
 
