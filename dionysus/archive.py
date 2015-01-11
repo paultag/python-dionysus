@@ -35,17 +35,18 @@ class Archive:
         stream = gzip.GzipFile(fileobj=data)
         yield from (Upload(x, self) for x in Sources.iter_paragraphs(stream))
 
-    def map(self, dist, component, function):
+    def map(self, dist, component, function, test=False):
         for source in self.get_sources(dist, component):
-            map_wrapper(self, source, dist, component, function)
+            map_wrapper(self, source, dist, component, function, test=test)
 
-    def amap(self, workers, dist, component, function):
+    def amap(self, workers, dist, component, function, test=False):
         with concurrent.futures.ProcessPoolExecutor(
             max_workers=workers
         ) as executor:
             for future in concurrent.futures.as_completed((
                 executor.submit(
-                    map_wrapper, self, source, dist, component, function
+                    map_wrapper, self, source, dist, component, function,
+                    test=test
                 ) for source in self.get_sources(dist, component)
             )):
                 sys.stdout.write(".")
@@ -53,7 +54,7 @@ class Archive:
 
 
 
-def map_wrapper(archive, source, dist, component, function):
+def map_wrapper(archive, source, dist, component, function, test=False):
     directory = source.source['Directory']
     package = source.source['Package']
     version = source.source['Version']
@@ -65,7 +66,7 @@ def map_wrapper(archive, source, dist, component, function):
     with source.checkout() as target:
         info = function(archive, source, target)
 
-    if info:
+    if info and (test is False):
         if not os.path.exists(directory):
             os.makedirs(directory)
         with open("{}/{}-{}.json".format(
@@ -100,11 +101,12 @@ class Upload:
             target=target,
         )
         _, _, ret = run_command([
-            "dget", "-ux", url,
+            "dget", "-ud", url,
         ])
 
         if ret != 0:
             raise ValueError("Bad dput - %s" % (url))
+
         return target
 
     @contextlib.contextmanager
