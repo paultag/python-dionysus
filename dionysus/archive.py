@@ -35,6 +35,33 @@ class Archive:
         stream = gzip.GzipFile(fileobj=data)
         yield from (Upload(x, self) for x in Sources.iter_paragraphs(stream))
 
+    def reduce(self, component, function, default=None):
+        els = default
+        def flatten(root):
+            for (root, dirs, files) in os.walk(root):
+                for dir_ in dirs:
+                    yield from flatten(os.path.join(root, dir_))
+                yield from [os.path.join(root, x) for x in files]
+
+        def splat(path):
+            with open(path, 'r') as fd:
+                data = json.load(fd)
+            _, component, _, package, file_ = path.split("/")
+
+            package, version = file_.rsplit("_", 1)
+            version = version.replace(".json", "")
+
+            return {
+                "data": data,
+                "component": component,
+                "version": version,
+                "package": package,
+            }
+
+        for path in flatten("pool/{}/".format(component)):
+            els = function(els, **splat(path))
+        return els
+
     def map(self, dist, component, function, test=False):
         for source in self.get_sources(dist, component):
             map_wrapper(self, source, dist, component, function, test=test)
@@ -59,7 +86,7 @@ def map_wrapper(archive, source, dist, component, function, test=False):
     package = source.source['Package']
     version = source.source['Version']
 
-    resultfp = "{}/{}-{}.json".format(directory, package, version)
+    resultfp = "{}/{}_{}.json".format(directory, package, version)
     if os.path.exists(resultfp):
         return None
 
@@ -69,7 +96,7 @@ def map_wrapper(archive, source, dist, component, function, test=False):
     if info and (test is False):
         if not os.path.exists(directory):
             os.makedirs(directory)
-        with open("{}/{}-{}.json".format(
+        with open("{}/{}_{}.json".format(
             directory,
             package,
             version,
